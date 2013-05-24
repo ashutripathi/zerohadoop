@@ -1,0 +1,138 @@
+Requirements:
+      * Master Node
+      * Slave Node
+      * JDK 1.6 or higher
+      * Root login/s
+      * Linux commands(RED HAT / CENT OS / FEDORA / OPEN SUSE)
+
+MyLogin and MyGroup creation
+      * login as root
+      * //groupadd MyUser  --makes a group named MyUser
+      * //user add -g MyUser -s /bin/bash -d /home/master master --user master is added to MyUser
+      * //passwd master --set password for master
+      * //su - master --switch to master
+      * master should be added to  "/etc/sodoers" //master ALL=(ALL) ALL
+      * "/etc/hosts" --ip addresses should be set in this file at all hosts
+      * all nodes should restart their services now
+      
+Mutual authentication amongst nodes(via public key authentication for master only)
+      * Generate keys //ssh-keygen -t rsa
+      * Authenticate slaves //cat /home/master/.ssh/id_rsa.pub >> /home/master/.ssh/authorized_keys
+        scp /home/master/.ssh/id_rsa.pub  <ip_address_of_slave>:/home/hadoop/.ssh/master.pub
+      * Authenticate master node //cat /home/hadoop/.ssh/master.pub >> /home/hadoop/.ssh/authorized_keys
+      * verify authentication //ssh <ip_address_of_slaves
+        
+MyCommon folder creation(for master)
+      * create new folder in the directory
+      * download hadoop and extract it inside the new folder
+
+      
+MyCluster configuration(for master)
+      * Environment config --edit .bash_profile or .profile
+            export JAVA_HOME=<path_to_jdk_folder>
+  					        (In this case it’s “/usr/java/jdk1.6.0_21”)
+
+            export HADOOP_HOME=<path_to_hadoop_folder>
+                    (In this case it’s “/home/hadoop/project/hadoop-0.20.0”)
+
+            export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$PATH
+					          (Modify the export PATH line shown in the snapshot)
+                    
+            nano /home/hadoop/project/hadoop0.20.0/conf/hadoop-env.sh
+  				                (Open the hadoop-env.sh file in edit mode and uncomment #JAVA)
+
+      
+      * MyCluster config 
+            “core-site.xml”
+                    --<property>
+                        <name>fs.default.name</name>
+                        <value>hdfs://<ip_address_of_mastrmode>:<port>/</value>
+                      </property>
+            
+            “hdfs-site.xml”
+                    ----<property>
+                        <name>dfs.name.dir</name>
+                        <value>/home/master/new folder/hadoop/hdfs/name</value>
+                      </property>
+                      --<property>
+                        <name>dfs.data.dir</name>
+                        <value>/home/master/new folder/hadoop/hdfs/data</value>
+                      </property>
+                      --<property>
+                        <name>dfs.replication</name>
+                        <value>1</value>
+                      </property>
+            
+            “mapred-site.xml” (edit these files)
+                      --<property>
+                        <name>mapred.job.tracker</name>
+                        <value><ip_adress_of_master>:<port></value>
+                      </property>
+                      
+                      
+            “HADOOP_HOME/conf/masters”
+                      
+            “HADOOP_HOME/conf/slaves”.
+            
+            In masters, specify the ip_address of the Master node and specify the ip_address of all the slave nodes which are there in the hadoop cluster. Use one line for one node’s ip_address.
+      
+Sharing MyCommon folder to all slaves
+      *scp -r /home/hadoop/project/hadoop <ip_address of slavenode>:/home/hadoop/project/hadoop
+      *Note: Change the “HADOOP_HOME/conf/masters” & “HADOOP_HOME/conf/slaves” to default files containing only “localhost” as that the information is required only in the master node.
+After copying the folder, login to each of the slave nodes as hadoop user and repeat the first part of the Hadoop Cluster Configuration, i.e.0 setting Environment Variables.
+
+      
+START
+      *Login to the master node with the user “hadoop”  and open the terminal. Change your current directory to the “/home/hadoop/project/hadoop”.
+You first need to format the NameNode. To format, execute the following command:
+bin/hadoop namenode –format
+The output of the command will be like the screenshot shown below:
+This command will create a “/home/hadoop/project/hadoop/hdfs” folder in the master node.
+Execute the commands to start all the Hadoop daemons.
+bin/start-all.sh
+Output of the above command will look like:
+To verify that there’s no exception, check all the log files which are created in the directory “/home/hadoop/project/hadoop/logs”.
+If theirs is no exception, open the web browser and open two links:
+http://localhost:50030/
+http://localhost:50070/
+The ports 50030 & 50070 are the default ports for JobTracker and the NameNode which are running on the master node.
+      *You can view / track all the information related to all the jobs / tasks performed and the file system through the JobTracker & NameNode links.
+
+TESTING
+      *To test the Hadoop cluster, you have to run a simple word count example. In the folder, “/home/hadoop/project/hadoop”, there’s a jar file “hadoop0.20.0-examples.jar” containing some basic .class files like WordCount.
+Create a New folder “input” inside the HADOOP_HOME directory. Download some text files from the internet and place them inside the “input” folder.
+You can download files using the given links:
+ 
+Execute the commands on the terminal with current directory as HADOOP_HOME:
+ 
+To copy the “output” folder from the file system to the local system, execute the following command:
+bin/hadoop fs -get output output
+    (The “output” folder is copied to the HADOOP_HOME directory)
+There will be a file “part-r-00000” in the output folder which contains all the words with the number of occurrences in the chosen text files. 
+
+Troubleshooting Problems / Exceptions
+Since, many connections are formed between the master node and the salves while setting up the Hadoop cluster, you will either have to disable the Firewall or add all the ports to the trusted ports list.
+There might be errors while configuring and starting the Hadoop cluster. You can use few commands to deal with them.
+1.  ps aux | grep –i hadoop | grep –v grep
+This command will list all the processes running under hadoop. You can kill the listed processes by using “kill -9 #ProcessID” command.
+2.	netstat | grep –i hadoop | grep –v grep
+This command lists all the connections with the specific port number that are established. If there’s any error / exception due to unavailability of any port. You can use command “fuser –k #Port/tcp” to destroy the connection.
+
+Reference(s)
+1.	www.mazsoft.com/blog/post/2009/11/19/setting-up-hadoophive-cluster-on-Centos-5.aspx
+
+2.	www.hadoop.apache.org/common/docs/current/single_node_setup.html
+
+3.	www.hadoop.apache.org/common/docs/current/cluster_setup.html
+
+4.	www.blog.theroux.ca/hadoop/how-to-install-hadoop-on-a-single-node-in-pseudo-distributed-mode/
+5.	www.hadoop.apache.org/common/docs/current/index.html
+
+6.	Setting_Up_a_Hadoop_Cluster.pdf by Shi Lei : shilei@comp.nus.edu.sg
+
+
+      *
+
+      
+      
+ 
